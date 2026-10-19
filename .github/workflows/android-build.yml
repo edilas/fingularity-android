@@ -30,6 +30,26 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
+      - name: Restore secure upload keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.FINGULARITY_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.FINGULARITY_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.FINGULARITY_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.FINGULARITY_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$KEYSTORE_B64" && -n "$STORE_PASSWORD" && -n "$KEY_PASSWORD" && -n "$KEY_ALIAS" ]]; then
+            mkdir -p "$RUNNER_TEMP/fingularity-signing"
+            printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/fingularity-signing/upload.jks"
+            echo "FINGULARITY_RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/fingularity-signing/upload.jks" >> "$GITHUB_ENV"
+            echo "FINGULARITY_STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "FINGULARITY_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+            echo "FINGULARITY_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "FINGULARITY_SIGNED=true" >> "$GITHUB_ENV"
+          else
+            echo "FINGULARITY_SIGNED=false" >> "$GITHUB_ENV"
+            echo "::notice::No signing secrets configured; release bundle will remain unsigned."
+          fi
       - name: Compile debug APK and release AAB
         run: gradle --no-daemon --stacktrace :app:assembleDebug :app:bundleRelease
       - name: Upload tablet/emulator APK
@@ -38,7 +58,21 @@ jobs:
           name: Fingularity-Debug-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+      - name: Verify signed release bundle
+        if: env.FINGULARITY_SIGNED == 'true'
+        run: |
+          jarsigner -verify -verbose -certs app/build/outputs/bundle/release/app-release.aab > "$RUNNER_TEMP/signing-verification.txt"
+          grep -q "jar verified." "$RUNNER_TEMP/signing-verification.txt"
+          echo "Signed AAB verified."
+      - name: Upload signed release bundle
+        if: env.FINGULARITY_SIGNED == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Fingularity-SIGNED-Release-AAB
+          path: app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
       - name: Upload unsigned release bundle
+        if: env.FINGULARITY_SIGNED != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: Fingularity-Unsigned-Release-AAB
