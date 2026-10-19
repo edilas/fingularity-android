@@ -15,8 +15,31 @@ android {
         versionName = "1.0.1"
     }
 
+    val releaseStoreFile = System.getenv("FINGULARITY_RELEASE_KEYSTORE_PATH")
+    val releaseStorePassword = System.getenv("FINGULARITY_STORE_PASSWORD")
+    val releaseKeyAlias = System.getenv("FINGULARITY_KEY_ALIAS")
+    val releaseKeyPassword = System.getenv("FINGULARITY_KEY_PASSWORD")
+    val releaseSigningConfigured = !releaseStoreFile.isNullOrBlank() &&
+        !releaseStorePassword.isNullOrBlank() &&
+        !releaseKeyAlias.isNullOrBlank() &&
+        !releaseKeyPassword.isNullOrBlank()
+
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            create("uploadRelease") {
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("uploadRelease")
+            }
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
