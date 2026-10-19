@@ -34,7 +34,7 @@ class MainActivity : Activity() {
                 layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
             }
         }
-        enterImmersiveMode()
+        // Defer immersive mode until the Activity has an attached decor view.
 
         webView = WebView(this).apply {
             setBackgroundColor(Color.BLACK)
@@ -95,6 +95,7 @@ class MainActivity : Activity() {
         }
 
         setContentView(webView)
+        window.decorView.post { enterImmersiveMode() }
         webView.loadUrl("file:///android_asset/game.html")
 
         billing.start()
