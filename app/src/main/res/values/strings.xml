@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Fingularity</string>
+
+    <!-- Replace these two values after creating Play Games Services in Play Console. -->
+    <string name="game_services_project_id" translatable="false">0000000000</string>
+    <string name="leaderboard_id" translatable="false">REPLACE_WITH_PLAY_GAMES_LEADERBOARD_ID</string>
+</resources>
